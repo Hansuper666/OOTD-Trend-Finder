@@ -6,17 +6,11 @@ A web application for finding outfit-of-the-day images based on text description
 
 ### Prerequisites
 
-- Python 3.8+
-- pip (Python package manager)
+- Python 3.11
 
 ### Installation
 
 1. Clone the repository or unzip the project files to a local directory:
-```bash
-git clone <repository-url>
-# or unzip the downloaded file
-cd OOTD
-```
 
 2. Install the required dependencies:
 ```bash
@@ -34,7 +28,7 @@ IMAGE_STORAGE_PATH=./ootd_images
 UPLOAD_PATH=./app/static/uploads
 ```
 
-Note: The OpenAI API key is not required since we're using local CLIP models for image analysis.
+Note: The OpenAI API key is not required since we're using local CLIP models for image analysis. We easily change to use OpenAI API to process the images, but I don't have a working OpenAI API for vision models. Thus, I use CLIP for this project, which works the same as an API.
 
 ### Download OOTD Images
 
