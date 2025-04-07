@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OOTD Trend Finder</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            padding-top: 20px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            color: #212529;
+            font-weight: 600;
+        }
+        .search-container {
+            background-color: white;
+            border-radius: 8px;
+            padding: 25px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+        .results-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+        }
+        .outfit-card {
+            background-color: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            width: 300px;
+            transition: transform 0.3s;
+        }
+        .outfit-card:hover {
+            transform: translateY(-5px);
+        }
+        .outfit-image {
+            width: 100%;
+            height: 300px;
+            object-fit: cover;
+        }
+        .outfit-details {
+            padding: 15px;
+        }
+        .outfit-details h5 {
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+        .tag {
+            display: inline-block;
+            background-color: #e9ecef;
+            color: #495057;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            margin-right: 5px;
+            margin-bottom: 5px;
+        }
+        .tag.style {
+            background-color: #cfe2ff;
+            color: #084298;
+        }
+        .tag.color {
+            background-color: #d1e7dd;
+            color: #0f5132;
+        }
+        .tag.occasion {
+            background-color: #f8d7da;
+            color: #842029;
+        }
+        .upload-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #dee2e6;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            display: none;
+        }
+        .loading img {
+            width: 50px;
+            height: 50px;
+        }
+        .analysis-container {
+            background-color: white;
+            border-radius: 8px;
+            padding: 25px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-top: 30px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>OOTD Trend Finder</h1>
+            <p class="lead">Find trendy outfit of the day images based on your preferences</p>
+        </div>
+
+        <div class="search-container">
+            <h3>Text-Based Image Search</h3>
+            <p>Enter a description of the outfit you're looking for:</p>
+            <div class="input-group mb-3">
+                <input type="text" id="searchQuery" class="form-control" placeholder="e.g., casual outfit with green sneakers" aria-label="Search query">
+                <button class="btn btn-primary" type="button" id="searchBtn">Search</button>
+            </div>
+            
+            <div class="upload-section">
+                <h4>Or search by image</h4>
+                <p>Upload an image to find similar outfits:</p>
+                <form id="imageUploadForm" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <input class="form-control" type="file" id="imageUpload" accept="image/*">
+                    </div>
+                    <button type="submit" class="btn btn-success">Find Similar Outfits</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="loading" id="loadingIndicator">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p>Searching for outfits...</p>
+        </div>
+
+        <div class="analysis-container" id="analysisContainer">
+            <h3>Outfit Analysis</h3>
+            <div id="analysisContent"></div>
+        </div>
+
+        <div class="results-container" id="resultsContainer"></div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchBtn = document.getElementById('searchBtn');
+            const searchQuery = document.getElementById('searchQuery');
+            const resultsContainer = document.getElementById('resultsContainer');
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            const imageUploadForm = document.getElementById('imageUploadForm');
+            const analysisContainer = document.getElementById('analysisContainer');
+            const analysisContent = document.getElementById('analysisContent');
+
+            // Text search
+            searchBtn.addEventListener('click', function() {
+                const query = searchQuery.value.trim();
+                if (query) {
+                    searchOutfits(query);
+                }
+            });
+
+            // Enter key for search
+            searchQuery.addEventListener('keyup', function(event) {
+                if (event.key === 'Enter') {
+                    const query = searchQuery.value.trim();
+                    if (query) {
+                        searchOutfits(query);
+                    }
+                }
+            });
+
+            // Image upload search
+            imageUploadForm.addEventListener('submit', function(event) {
+                event.preventDefault();
+                const fileInput = document.getElementById('imageUpload');
+                if (fileInput.files.length > 0) {
+                    searchByImage(fileInput.files[0]);
+                }
+            });
+
+            // Function to search outfits by text
+            function searchOutfits(query) {
+                resultsContainer.innerHTML = '';
+                analysisContainer.style.display = 'none';
+                loadingIndicator.style.display = 'block';
+
+                const formData = new FormData();
+                formData.append('query', query);
+                formData.append('limit', 10);
+
+                fetch('/api/search/text', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    loadingIndicator.style.display = 'none';
+                    displayResults(data);
+                })
+                .catch(error => {
+                    loadingIndicator.style.display = 'none';
+                    console.error('Error:', error);
+                    resultsContainer.innerHTML = '<div class="alert alert-danger">Error searching outfits. Please try again.</div>';
+                });
+            }
+
+            // Function to search outfits by image
+            function searchByImage(imageFile) {
+                resultsContainer.innerHTML = '';
+                analysisContainer.style.display = 'none';
+                loadingIndicator.style.display = 'block';
+
+                const formData = new FormData();
+                formData.append('file', imageFile);
+                formData.append('limit', 10);
+
+                fetch('/api/search/image', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    loadingIndicator.style.display = 'none';
+                    displayResults(data);
+                    
+                    // Also analyze the uploaded image
+                    analyzeImage(imageFile);
+                })
+                .catch(error => {
+                    loadingIndicator.style.display = 'none';
+                    console.error('Error:', error);
+                    resultsContainer.innerHTML = '<div class="alert alert-danger">Error searching outfits. Please try again.</div>';
+                });
+            }
+
+            // Function to analyze an image
+            function analyzeImage(imageFile) {
+                const formData = new FormData();
+                formData.append('file', imageFile);
+
+                fetch('/api/analyze', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    displayAnalysis(data);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+            }
+
+            // Function to display search results
+            function displayResults(results) {
+                if (results.length === 0) {
+                    resultsContainer.innerHTML = '<div class="alert alert-info">No outfits found matching your search. Try a different query.</div>';
+                    return;
+                }
+
+                resultsContainer.innerHTML = '';
+                
+                results.forEach(outfit => {
+                    const outfitCard = document.createElement('div');
+                    outfitCard.className = 'outfit-card';
+                    
+                    const similarity = outfit.similarity * 100;
+                    
+                    outfitCard.innerHTML = `
+                        <img src="/api/image/${outfit.id}" class="outfit-image" alt="Outfit">
+                        <div class="outfit-details">
+                            <h5>Match: ${similarity.toFixed(1)}%</h5>
+                            <div class="tags-container">
+                                ${outfit.tags.map(tag => {
+                                    let tagClass = 'tag';
+                                    if (tag.confidence > 0.85) tagClass += ' style';
+                                    else if (tag.confidence > 0.8) tagClass += ' color';
+                                    else tagClass += ' occasion';
+                                    return `<span class="${tagClass}">${tag.tag}</span>`;
+                                }).join('')}
+                            </div>
+                        </div>
+                    `;
+                    
+                    resultsContainer.appendChild(outfitCard);
+                });
+            }
+
+            // Function to display image analysis
+            function displayAnalysis(analysis) {
+                analysisContainer.style.display = 'block';
+                
+                let html = '<div class="row">';
+                
+                // Clothing items
+                html += '<div class="col-md-6 mb-4">';
+                html += '<h5>Clothing Items</h5>';
+                html += '<ul>';
+                analysis.clothing_items.forEach(item => {
+                    html += `<li>${item}</li>`;
+                });
+                html += '</ul>';
+                html += '</div>';
+                
+                // Style and occasions
+                html += '<div class="col-md-6 mb-4">';
+                html += `<h5>Style</h5><p>${analysis.style}</p>`;
+                html += '<h5>Suitable Occasions</h5>';
+                html += '<ul>';
+                analysis.occasions.forEach(occasion => {
+                    html += `<li>${occasion}</li>`;
+                });
+                html += '</ul>';
+                html += '</div>';
+                
+                // Color palette
+                html += '<div class="col-12">';
+                html += '<h5>Color Palette</h5>';
+                html += '<div class="d-flex gap-2">';
+                analysis.color_palette.forEach(color => {
+                    html += `<div class="tag color">${color}</div>`;
+                });
+                html += '</div>';
+                html += '</div>';
+                
+                html += '</div>'; // Close row
+                
+                analysisContent.innerHTML = html;
+            }
+        });
+    </script>
+</body>
+</html> 
